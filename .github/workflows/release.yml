@@ -4,12 +4,17 @@ on:
     branches:
       - master
 
+permissions:
+  contents: write  # 必须权限，用于创建Tag/Release
+
 jobs:
   build:
     runs-on: windows-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v5
+        with:
+          fetch-depth: 0  # 拉取全部历史Tag，版本比对必需
 
       - name: Set up Python
         uses: actions/setup-python@v4
@@ -30,24 +35,69 @@ jobs:
       - name: List dist directory contents
         run: dir dist
 
-      - name: Get info from version.json
+      - name: Get base version from version.json
         id: get_info
         run: |
           $json = Get-Content version.json | ConvertFrom-Json
-          echo "version=$($json.version)" >> $env:GITHUB_ENV
-          echo "name=$($json.name)" >> $env:GITHUB_ENV
+          echo "BASE_VER=$($json.version)" >> $env:GITHUB_ENV
+          echo "APP_NAME=$($json.name)" >> $env:GITHUB_ENV
+        shell: pwsh
+
+      # ========== 核心：自动语义化升版本 ==========
+      - name: Auto bump patch version
+        id: bump_ver
+        run: |
+          # 读取version.json里的基础版本 如2.0.7
+          $baseRaw = "${{ env.BASE_VER }}"
+          $baseParts = $baseRaw -split '\.'
+          $baseMajor = [int]$baseParts[0]
+          $baseMinor = [int]$baseParts[1]
+          $basePatch = [int]$baseParts[2]
+
+          # 获取仓库所有v开头Tag并排序
+          $allTags = git tag -l "v*" | Sort-Object { [version]($_ -replace '^v','') }
+          $latestTag = $allTags | Select-Object -Last 1
+
+          if ($null -eq $latestTag) {
+            # 仓库无任何Tag，直接使用version.json版本
+            $newVerRaw = "$baseMajor.$baseMinor.$basePatch"
+          }
+          else {
+            # 拆分最新Tag版本
+            $latestRaw = $latestTag -replace '^v',''
+            $latestParts = $latestRaw -split '\.'
+            $lMaj = [int]$latestParts[0]
+            $lMin = [int]$latestParts[1]
+            $lPat = [int]$latestParts[2]
+
+            # 对比：如果version.json版本比线上Tag新，直接用；否则补丁+1
+            if (($baseMajor -gt $lMaj) -or (($baseMajor -eq $lMaj) -and ($baseMinor -gt $lMin)) -or (($baseMajor -eq $lMaj) -and ($baseMinor -eq $lMin) -and ($basePatch -gt $lPat))) {
+              $newVerRaw = "$baseMajor.$baseMinor.$basePatch"
+            }
+            else {
+              $newPat = $lPat + 1
+              $newVerRaw = "$lMaj.$lMin.$newPat"
+            }
+          }
+
+          $finalTag = "v$newVerRaw"
+          echo "NEW_VERSION_RAW=$newVerRaw" >> $env:GITHUB_ENV
+          echo "FINAL_TAG=$finalTag" >> $env:GITHUB_ENV
+          echo "基础版本(version.json): $baseRaw"
+          echo "仓库最新Tag: $latestTag"
+          echo "本次发布Tag: $finalTag"
         shell: pwsh
 
       - name: Compress dist directory
         run: |
-          Compress-Archive -Path dist\* -DestinationPath dist\${{ env.name }}-v${{ env.version }}.zip
+          Compress-Archive -Path dist\* -DestinationPath dist\${{ env.APP_NAME }}-${{ env.FINAL_TAG }}.zip
         shell: pwsh
 
       - name: Upload artifact
         uses: actions/upload-artifact@v5
         with:
-          name: ${{ env.name }}-v${{ env.version }}
-          path: dist\${{ env.name }}-v${{ env.version }}.zip
+          name: ${{ env.APP_NAME }}-${{ env.FINAL_TAG }}
+          path: dist\${{ env.APP_NAME }}-${{ env.FINAL_TAG }}.zip
 
       - name: Install jq
         run: choco install jq
@@ -55,12 +105,20 @@ jobs:
       - name: Get changelog
         id: get_changelog
         run: |
-          $version = "${{ env.version }}"
+          $version = "${{ env.NEW_VERSION_RAW }}"
           $changelog = (Get-Content CHANGELOG.md -Raw)
           $changelog = [regex]::Match($changelog, "(?s)## v$version.*?(?=## v)").Value
           $changelog = $changelog -replace "(?s)^## v$version.*?\n", ""
           $changelog = $changelog.Trim()
           $changelog | jq -Rs '.' | ForEach-Object { echo "changelog=$_"; echo "changelog=$_" >> $env:GITHUB_ENV }
+        shell: pwsh
+
+      - name: Create Git Tag
+        run: |
+          git config --global user.name "GitHub Actions"
+          git config --global user.email "actions@github.com"
+          git tag -a ${{ env.FINAL_TAG }} -m "Release ${{ env.FINAL_TAG }}"
+          git push origin ${{ env.FINAL_TAG }}
         shell: pwsh
 
       - name: Create Release
@@ -69,8 +127,8 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tag_name: ${{ env.version }}
-          release_name: v${{ env.version }}
+          tag_name: ${{ env.FINAL_TAG }}
+          release_name: Release ${{ env.FINAL_TAG }}
           body: ${{ fromJSON(env.changelog) }}
           draft: false
           prerelease: false
@@ -81,6 +139,6 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: dist/${{ env.name }}-v${{ env.version }}.zip
-          asset_name: ${{ env.name }}-v${{ env.version }}.zip
+          asset_path: dist/${{ env.APP_NAME }}-${{ env.FINAL_TAG }}.zip
+          asset_name: ${{ env.APP_NAME }}-${{ env.FINAL_TAG }}.zip
           asset_content_type: application/zip
