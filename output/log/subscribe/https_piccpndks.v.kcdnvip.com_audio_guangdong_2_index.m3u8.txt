@@ -1,0 +1,12 @@
+#EXTM3U
+#EXT-X-VERSION:3
+#EXT-X-MEDIA-SEQUENCE:178221558
+#EXT-X-TARGETDURATION:10
+#EXTINF:10.005,
+/cntv20210928/audio/guangdong_2/178221558.ts?region=beijing
+#EXTINF:9.984,
+/cntv20210928/audio/guangdong_2/178221559.ts?region=beijing
+#EXTINF:10.005,
+/cntv20210928/audio/guangdong_2/178221560.ts?region=beijing
+#EXTINF:10.006,
+/cntv20210928/audio/guangdong_2/178221561.ts?region=beijing

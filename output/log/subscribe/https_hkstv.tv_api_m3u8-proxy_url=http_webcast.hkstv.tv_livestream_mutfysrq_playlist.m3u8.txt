@@ -1,0 +1,3 @@
+#EXTM3U
+#EXT-X-STREAM-INF:BANDWIDTH=1,AVERAGE-BANDWIDTH=1
+/webcast/livestream/mutfysrq/playlist.m3u8?hls_ctx=i169y8k4

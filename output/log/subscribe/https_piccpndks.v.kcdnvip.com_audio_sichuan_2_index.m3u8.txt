@@ -1,0 +1,12 @@
+#EXTM3U
+#EXT-X-VERSION:3
+#EXT-X-MEDIA-SEQUENCE:178006809
+#EXT-X-TARGETDURATION:10
+#EXTINF:10.005,
+/cntv20210928/audio/sichuan_2/178006809_29703592.ts?region=beijing
+#EXTINF:10.005,
+/cntv20210928/audio/sichuan_2/178006810_29703593.ts?region=beijing
+#EXTINF:10.006,
+/cntv20210928/audio/sichuan_2/178006811_29703593.ts?region=beijing
+#EXTINF:9.984,
+/cntv20210928/audio/sichuan_2/178006812_29703593.ts?region=beijing

@@ -1,0 +1,15 @@
+#EXTM3U
+##EXT-X-VERSION:3
+#EXT-X-ALLOW-CACHE:YES
+#EXT-X-TARGETDURATION:6
+#EXT-X-MEDIA-SEQUENCE:4000833
+#EXTINF:5, no desc
+live_1029_1_4000829.ts?key=txiptv&key2=4000829
+#EXTINF:5, no desc
+live_1029_1_4000830.ts?key=txiptv&key2=4000830
+#EXTINF:5, no desc
+live_1029_1_4000831.ts?key=txiptv&key2=4000831
+#EXTINF:5, no desc
+live_1029_1_4000832.ts?key=txiptv&key2=4000832
+#EXTINF:5, no desc
+live_1029_1_4000833.ts?key=txiptv&key2=4000833
